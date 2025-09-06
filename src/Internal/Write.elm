@@ -7,7 +7,7 @@ Thank you Rupert!
 -}
 
 import Internal.Compiler exposing (denodeAll, nodify)
-import Nix.Syntax.Expression exposing (AttrPath, Attribute(..), AttributePattern(..), Expression(..), LetDeclaration(..), Name(..), Pattern(..), StringElement)
+import Nix.Syntax.Expression exposing (AttrPath, Attribute(..), AttributePattern(..), Expression(..), LetDeclaration(..), Name(..), Pattern(..), StringElement(..))
 import Nix.Syntax.Infix exposing (InfixDirection(..))
 import Nix.Syntax.Node exposing (Node(..))
 import Pretty exposing (Doc)
@@ -17,21 +17,6 @@ writeExpression : Expression -> String
 writeExpression exp =
     prettyExpression exp
         |> Pretty.pretty 80
-
-
-{-| Pretty prints an Nix function, which may include documentation and a signature too.
--}
-prettyFun : Pattern -> Expression -> Doc t
-prettyFun pattern value =
-    [ Pretty.words
-        [ prettyPatternInner True pattern
-        , Pretty.string ":"
-        ]
-        |> Pretty.a Pretty.line
-        |> Pretty.a (prettyExpression value)
-        |> Pretty.nest 4
-    ]
-        |> Pretty.lines
 
 
 
@@ -103,7 +88,7 @@ prettyPatternInner isTop pattern =
                 |> Pretty.braces
 
         VarPattern var ->
-            Pretty.string var
+            prettyIdentifier var
 
         AtPattern (Node _ pat) (Node _ name) ->
             [ prettyPatternInner False pat
@@ -221,13 +206,13 @@ prettyExpressionInner context indent expression =
             prettyExpressionInner context indent expr
 
         LetExpr letDeclarations letExpression ->
-            noninfix <| prettyLetBlock indent letDeclarations letExpression
+            noninfix <| prettyLetExpr indent letDeclarations letExpression
 
         FunctionExpr arg child ->
             noninfix <| prettyLambdaExpression indent arg child
 
         AttrSetExpr setters ->
-            prettyRecordExpr setters
+            prettyAttrSet setters
 
         ListExpr exprs ->
             prettyList indent exprs
@@ -245,8 +230,17 @@ prettyExpressionInner context indent expression =
             else
                 ( Pretty.string "false", False )
 
-        PathExpr _ ->
-            Debug.todo "branch 'PathExpr _' not implemented"
+        PathExpr components ->
+            ( components
+                |> List.map
+                    (\g ->
+                        g
+                            |> List.map prettyStringElement
+                            |> Pretty.join Pretty.empty
+                    )
+                |> Pretty.join slash
+            , False
+            )
 
         LookupPathExpr _ ->
             Debug.todo "branch 'LookupPathExpr _' not implemented"
@@ -395,17 +389,6 @@ prettyIfBlock indent exprBool exprTrue exprFalse =
     )
 
 
-prettyLiteral : String -> Doc t
-prettyLiteral val =
-    if String.contains "\n" val then
-        Pretty.string val
-            |> tripleQuotes
-
-    else
-        Pretty.string (escape val)
-            |> quotes
-
-
 showParen : Bool -> ( Doc t, Bool ) -> ( Doc t, Bool )
 showParen show ( child, alwaysBreak ) =
     if show then
@@ -430,8 +413,8 @@ showParen show ( child, alwaysBreak ) =
         ( child, alwaysBreak )
 
 
-prettyLetBlock : Int -> List (Node LetDeclaration) -> Node Expression -> ( Doc t, Bool )
-prettyLetBlock indent declarations (Node _ expression) =
+prettyLetExpr : Int -> List (Node LetDeclaration) -> Node Expression -> ( Doc t, Bool )
+prettyLetExpr indent declarations (Node _ expression) =
     ( [ Pretty.string "let"
       , denodeAll declarations
             |> List.map (prettyLetDeclaration indent)
@@ -451,7 +434,7 @@ prettyLetDeclaration indent letDecl =
     case letDecl of
         LetDeclaration (Node _ path) (Node _ expr) ->
             [ prettyAttrPath path
-            , Pretty.string "="
+            , Pretty.string "= "
             ]
                 |> Pretty.words
                 |> Pretty.a
@@ -478,7 +461,7 @@ prettyName : Name -> Doc t
 prettyName name =
     case name of
         IdentifierName id ->
-            Pretty.string id
+            prettyIdentifier id
 
         StringName elems ->
             prettyString elems
@@ -487,9 +470,33 @@ prettyName name =
             Debug.todo "prettyName > InterpolationName _"
 
 
+prettyIdentifier : String -> Doc t
+prettyIdentifier id =
+    if String.all (\c -> Char.isAlphaNum c || c == '-' || c == '_' || c == '.') id then
+        Pretty.string id
+
+    else
+        Pretty.string id |> quotes
+
+
 prettyString : List StringElement -> Doc t
 prettyString elems =
-    Debug.todo "prettyString"
+    elems
+        |> List.map prettyStringElement
+        |> Pretty.join Pretty.empty
+        |> quotes
+
+
+prettyStringElement : StringElement -> Doc t
+prettyStringElement elem =
+    case elem of
+        StringLiteral s ->
+            Pretty.string (escape s)
+
+        StringInterpolation (Node _ e) ->
+            Pretty.string "${"
+                |> Pretty.a (prettyExpression e)
+                |> Pretty.a (Pretty.string "}")
 
 
 prettyLambdaExpression : Int -> Node Pattern -> Node Expression -> ( Doc t, Bool )
@@ -498,9 +505,8 @@ prettyLambdaExpression indent (Node _ arg) (Node _ child) =
         ( prettyExpr, alwaysBreak ) =
             prettyExpressionInner topContext 4 child
     in
-    ( [ Pretty.string "\\"
-            |> Pretty.a (prettyPatternInner False arg)
-            |> Pretty.a (Pretty.string " ->")
+    ( [ prettyPatternInner False arg
+            |> Pretty.a (Pretty.string ": ")
       , prettyExpr
       ]
         |> Pretty.lines
@@ -511,8 +517,8 @@ prettyLambdaExpression indent (Node _ arg) (Node _ child) =
     )
 
 
-prettyRecordExpr : List (Node Attribute) -> ( Doc t, Bool )
-prettyRecordExpr setters =
+prettyAttrSet : List (Node Attribute) -> ( Doc t, Bool )
+prettyAttrSet setters =
     case setters of
         [] ->
             ( Pretty.string "{}", False )
@@ -529,7 +535,9 @@ prettyRecordExpr setters =
                         Pretty.line
 
                 ( prettyExpressions, alwaysBreak ) =
-                    List.map prettySetter (denodeAll setters)
+                    setters
+                        |> denodeAll
+                        |> List.map prettyAttribute
                         |> List.unzip
                         |> Tuple.mapSecond (List.any identity)
             in
@@ -542,8 +550,8 @@ prettyRecordExpr setters =
             )
 
 
-prettySetter : Attribute -> ( Doc t, Bool )
-prettySetter attr =
+prettyAttribute : Attribute -> ( Doc t, Bool )
+prettyAttribute attr =
     case attr of
         Attribute (Node _ fld) (Node _ val) ->
             let
@@ -646,14 +654,14 @@ dot =
     Pretty.string "."
 
 
+slash : Doc t
+slash =
+    Pretty.string "/"
+
+
 quotes : Doc t -> Doc t
 quotes doc =
     Pretty.surround (Pretty.char '"') (Pretty.char '"') doc
-
-
-tripleQuotes : Doc t -> Doc t
-tripleQuotes doc =
-    Pretty.surround (Pretty.string "\"\"\"") (Pretty.string "\"\"\"") doc
 
 
 doubleLines : List (Doc t) -> Doc t
@@ -666,27 +674,10 @@ escape val =
     val
         |> String.replace "\\" "\\\\"
         |> String.replace "\"" "\\\""
+        |> String.replace "${" "\\${"
         |> String.replace "\n" "\\n"
+        |> String.replace "\u{000D}" "\\r"
         |> String.replace "\t" "\\t"
-
-
-escapeChar : Char -> String
-escapeChar val =
-    case val of
-        '\\' ->
-            "\\\\"
-
-        '\'' ->
-            "\\'"
-
-        '\t' ->
-            "\\t"
-
-        '\n' ->
-            "\\n"
-
-        c ->
-            String.fromChar c
 
 
 optionalGroup : Bool -> Doc t -> Doc t

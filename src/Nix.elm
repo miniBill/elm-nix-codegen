@@ -51,7 +51,6 @@ module Nix exposing
 
 import Internal.Arg
 import Internal.Compiler as Compiler
-import Internal.Format as Format
 import Internal.Index as Index
 import Internal.Write
 import Nix.Parser
@@ -86,8 +85,7 @@ val name =
             -- This *must* be an un-protected name, where we only use
             -- literally what the dev gives us, because we are trying
             -- to refer to something that already exists.
-            Exp.VariableExpr
-                (Format.sanitize name)
+            Exp.VariableExpr name
 
 
 {-| -}
@@ -172,14 +170,10 @@ record fields =
                 unified =
                     fields
                         |> List.foldl
-                            (\( unformattedFieldName, fieldExpression ) found ->
+                            (\( fieldName, fieldExpression ) found ->
                                 let
                                     ( newIndex, exp ) =
                                         Compiler.toExpressionDetails found.index fieldExpression
-
-                                    fieldName : String
-                                    fieldName =
-                                        Format.formatValue unformattedFieldName
                                 in
                                 { index = newIndex
                                 , fields =
@@ -265,14 +259,10 @@ results in
 
 -}
 get : String -> Expression -> Expression
-get unformattedFieldName recordExpression =
+get fieldName recordExpression =
     Compiler.Expression <|
         \index ->
             let
-                fieldName : String
-                fieldName =
-                    Format.formatValue unformattedFieldName
-
                 ( _, expr ) =
                     Compiler.toExpressionDetails index recordExpression
             in
