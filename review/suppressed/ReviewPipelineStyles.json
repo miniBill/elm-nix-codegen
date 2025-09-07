@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "automatically created by": "elm-review suppress",
+  "learn more": "elm-review suppress --help",
+  "suppressions": [
+    { "count": 17, "filePath": "../elm-nix-syntax/tests/ParserTest.elm" },
+    { "count": 4, "filePath": "../elm-nix-syntax/src/Nix/Parser/Internal.elm" },
+    { "count": 3, "filePath": "../elm-nix-syntax/tests/Flake.elm" },
+    { "count": 2, "filePath": "../elm-nix-syntax/tests/Utils.elm" },
+    { "count": 2, "filePath": "src/Nix.elm" },
+    { "count": 1, "filePath": "../elm-nix-syntax/src/Parser/Error.elm" },
+    { "count": 1, "filePath": "src/Internal/Arg.elm" },
+    { "count": 1, "filePath": "src/Internal/Write.elm" },
+    { "count": 1, "filePath": "src/Nix/Let.elm" },
+    { "count": 1, "filePath": "src/Nix/Op.elm" }
+  ]
+}

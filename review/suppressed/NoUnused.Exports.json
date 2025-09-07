@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "automatically created by": "elm-review suppress",
+  "learn more": "elm-review suppress --help",
+  "suppressions": [
+    { "count": 8, "filePath": "src/Nix.elm" },
+    { "count": 3, "filePath": "../elm-nix-syntax/src/Parser/Error.elm" },
+    { "count": 2, "filePath": "../elm-nix-syntax/src/Nix/Syntax/Node.elm" },
+    { "count": 2, "filePath": "src/Nix/Arg.elm" },
+    { "count": 2, "filePath": "src/Nix/Let.elm" },
+    { "count": 1, "filePath": "../elm-nix-syntax/tests/Utils.elm" },
+    { "count": 1, "filePath": "src/Nix/Op.elm" }
+  ]
+}

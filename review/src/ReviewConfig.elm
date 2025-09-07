@@ -52,8 +52,8 @@ config =
     , NoUnused.Variables.rule
     , Simplify.rule Simplify.defaults
         |> Rule.ignoreErrorsForDirectories [ "generated" ]
-    -- , ReviewPipelineStyles.rule pipelineConfig
-    --     |> Rule.ignoreErrorsForDirectories [ "generated" ]
+    , ReviewPipelineStyles.rule pipelineConfig
+        |> Rule.ignoreErrorsForDirectories [ "generated" ]
     ]
 
 
