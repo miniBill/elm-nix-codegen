@@ -19,7 +19,10 @@ flake =
                 , ( "systems.url", Nix.string "github:nix-systems/default" )
                 , ( "secretdemoclub"
                   , Nix.record
-                        []
+                        [ ( "url", Nix.string "github:miniBill/secretdemoclub?dir=server" )
+                        , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
+                        , ( "inputs.flake-utils.follows", Nix.string "flake-utils" )
+                        ]
                   )
                 ]
           )

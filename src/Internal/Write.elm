@@ -440,7 +440,7 @@ prettyLetDeclaration indent letDecl =
                 |> Pretty.a
                     (prettyExpressionInner topContext 0 expr
                         |> Tuple.first
-                        |> Pretty.nest (4 + indent)
+                        |> Pretty.nest (2 + indent)
                     )
 
         LetInheritVariables _ ->
@@ -527,21 +527,24 @@ prettyAttrSet setters =
             let
                 ( prettyExpressions, alwaysBreak ) =
                     setters
-                        |> denodeAll
-                        |> List.map prettyAttribute
+                        |> List.map (\(Node _ attr) -> prettyAttribute attr)
                         |> List.unzip
-                        |> Tuple.mapBoth
-                            (List.map (Pretty.indent 2))
-                            (List.any identity)
+                        |> Tuple.mapSecond (List.any identity)
             in
             ( ([ Pretty.string "{"
-               , doubleLines prettyExpressions
+               , if alwaysBreak then
+                    doubleLines prettyExpressions
+                        |> Pretty.indent 2
+
+                 else
+                    Pretty.lines prettyExpressions
+                        |> Pretty.indent 2
                , Pretty.string "}"
                ]
                 |> Pretty.lines
               )
                 |> optionalGroup alwaysBreak
-            , alwaysBreak
+            , alwaysBreak || List.length setters > 1
             )
 
 
