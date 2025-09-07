@@ -50,7 +50,7 @@ flake =
                         , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
                         ]
                   )
-                , ( "nix-index-database"
+                , ( "flake-utils"
                   , Nix.attrSet
                         [ ( "url", Nix.string "github:numtide/flake-utils" )
                         , ( "inputs.systems.follows", Nix.string "systems" )
@@ -62,7 +62,7 @@ flake =
           , Nix.fn (Nix.Arg.var "inputs") <|
                 \inputs ->
                     Nix.Let.letIn
-                        (\withConfig ->
+                        (\allowedUnfree withConfig ->
                             Nix.attrSet
                                 [ ( "homeConfigurations"
                                   , Nix.attrSet
@@ -78,6 +78,19 @@ flake =
                                   )
                                 ]
                         )
+                        |> Nix.Let.value "allowedUnfree"
+                            ([ "code"
+                             , "discord"
+                             , "google-chrome"
+                             , "minecraft-launcher"
+                             , "slack"
+                             , "spotify"
+                             , "vscode"
+                             , "zoom"
+                             ]
+                                |> List.map Nix.string
+                                |> Nix.list
+                            )
                         |> Nix.Let.fn "withConfig"
                             (Nix.Arg.record (\system username module_ -> { system = system, username = username, module_ = module_ }) { open = False }
                                 |> Nix.Arg.field "system"

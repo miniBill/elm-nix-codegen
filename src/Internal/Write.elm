@@ -148,12 +148,12 @@ bottomContext =
 -}
 prettyExpression : Expression -> Doc t
 prettyExpression expression =
-    prettyExpressionInner topContext 0 expression
+    prettyExpressionInner topContext expression
         |> Tuple.first
 
 
-prettyExpressionInner : Context -> Int -> Expression -> ( Doc t, Bool )
-prettyExpressionInner context indent expression =
+prettyExpressionInner : Context -> Expression -> ( Doc t, Bool )
+prettyExpressionInner context expression =
     let
         noninfix : ( Doc t, Bool ) -> ( Doc t, Bool )
         noninfix =
@@ -161,11 +161,11 @@ prettyExpressionInner context indent expression =
     in
     case expression of
         ApplicationExpr h t ->
-            noninfix <| prettyApplication indent (h :: t)
+            noninfix <| prettyApplication (h :: t)
 
         OperatorApplicationExpr exprl (Node _ symbol) exprr ->
             showParen (context.precedence > precedence symbol) <|
-                prettyOperatorApplication indent exprl symbol exprr
+                prettyOperatorApplication exprl symbol exprr
 
         VariableExpr val ->
             ( Pretty.string val
@@ -174,7 +174,7 @@ prettyExpressionInner context indent expression =
 
         IfExpr exprBool exprTrue exprFalse ->
             noninfix <|
-                prettyIfBlock indent exprBool exprTrue exprFalse
+                prettyIfBlock exprBool exprTrue exprFalse
 
         IntExpr val ->
             ( Pretty.string (String.fromInt val)
@@ -190,7 +190,7 @@ prettyExpressionInner context indent expression =
             noninfix <|
                 let
                     ( prettyExpr, alwaysBreak ) =
-                        prettyExpressionInner bottomContext 4 expr
+                        prettyExpressionInner bottomContext expr
                 in
                 ( Pretty.string "-"
                     |> Pretty.a prettyExpr
@@ -203,19 +203,19 @@ prettyExpressionInner context indent expression =
             )
 
         ParenthesizedExpr (Node _ expr) ->
-            prettyExpressionInner context indent expr
+            prettyExpressionInner context expr
 
         LetExpr letDeclarations letExpression ->
-            noninfix <| prettyLetExpr indent letDeclarations letExpression
+            noninfix <| prettyLet letDeclarations letExpression
 
         FunctionExpr arg child ->
-            noninfix <| prettyFunction indent arg child
+            noninfix <| prettyFunction arg child
 
         AttrSetExpr setters ->
             prettyAttrSet setters
 
         ListExpr exprs ->
-            prettyList indent exprs
+            prettyList exprs
 
         DotExpr expr field default ->
             prettyRecordAccess expr field default
@@ -260,26 +260,25 @@ prettyExpressionInner context indent expression =
             Debug.todo "branch 'HasAttributeExpr _ _' not implemented"
 
 
-prettyApplication : Int -> List (Node Expression) -> ( Doc t, Bool )
-prettyApplication indent exprs =
+prettyApplication : List (Node Expression) -> ( Doc t, Bool )
+prettyApplication exprs =
     let
         ( prettyExpressions, alwaysBreak ) =
             List.map
-                (prettyExpressionInner bottomContext indent)
+                (prettyExpressionInner bottomContext)
                 (denodeAll exprs)
                 |> List.unzip
                 |> Tuple.mapSecond (List.any identity)
     in
     ( prettyExpressions
         |> Pretty.lines
-        |> Pretty.hang indent
         |> optionalGroup alwaysBreak
     , alwaysBreak
     )
 
 
-prettyOperatorApplication : Int -> Node Expression -> String -> Node Expression -> ( Doc t, Bool )
-prettyOperatorApplication indent (Node _ exprl) symbol (Node _ exprr) =
+prettyOperatorApplication : Node Expression -> String -> Node Expression -> ( Doc t, Bool )
+prettyOperatorApplication (Node _ exprl) symbol (Node _ exprr) =
     let
         prec : Int
         prec =
@@ -297,10 +296,10 @@ prettyOperatorApplication indent (Node _ exprl) symbol (Node _ exprr) =
                     ( prec + 1, prec )
 
         ( left, breakLeft ) =
-            prettyExpressionInner { precedence = lprec } indent exprl
+            prettyExpressionInner { precedence = lprec } exprl
 
         ( right, breakRight ) =
-            prettyExpressionInner { precedence = rprec } (indent + 4) exprr
+            prettyExpressionInner { precedence = rprec } exprr
 
         alwaysBreak : Bool
         alwaysBreak =
@@ -317,8 +316,8 @@ prettyOperatorApplication indent (Node _ exprl) symbol (Node _ exprr) =
     )
 
 
-prettyIfBlock : Int -> Node Expression -> Node Expression -> Node Expression -> ( Doc t, Bool )
-prettyIfBlock indent exprBool exprTrue exprFalse =
+prettyIfBlock : Node Expression -> Node Expression -> Node Expression -> ( Doc t, Bool )
+prettyIfBlock exprBool exprTrue exprFalse =
     let
         innerIfBlock : Node Expression -> Node Expression -> Node Expression -> List (Doc t)
         innerIfBlock (Node _ innerExprBool) (Node _ innerExprTrue) (Node _ innerExprFalse) =
@@ -327,14 +326,13 @@ prettyIfBlock indent exprBool exprTrue exprFalse =
                 ifPart =
                     let
                         ( _, alwaysBreak ) =
-                            prettyExpressionInner topContext 2 innerExprBool
+                            prettyExpressionInner topContext innerExprBool
                     in
                     [ [ Pretty.string "if"
-                      , prettyExpressionInner topContext 2 innerExprBool |> Tuple.first
+                      , prettyExpressionInner topContext innerExprBool |> Tuple.first
                       ]
                         |> Pretty.lines
                         |> optionalGroup alwaysBreak
-                        |> Pretty.nest indent
                     , Pretty.string "then"
                     ]
                         |> Pretty.lines
@@ -342,9 +340,8 @@ prettyIfBlock indent exprBool exprTrue exprFalse =
 
                 truePart : Doc t
                 truePart =
-                    prettyExpressionInner topContext 2 innerExprTrue
+                    prettyExpressionInner topContext innerExprTrue
                         |> Tuple.first
-                        |> Pretty.indent indent
 
                 elsePart : Doc t
                 elsePart =
@@ -358,9 +355,8 @@ prettyIfBlock indent exprBool exprTrue exprFalse =
                             innerIfBlock nestedExprBool nestedExprTrue nestedExprFalse
 
                         _ ->
-                            [ prettyExpressionInner topContext 2 innerExprFalse
+                            [ prettyExpressionInner topContext innerExprFalse
                                 |> Tuple.first
-                                |> Pretty.indent indent
                             ]
             in
             case falsePart of
@@ -417,15 +413,15 @@ showParen show ( child, alwaysBreak ) =
         ( child, alwaysBreak )
 
 
-prettyLetExpr : Int -> List (Node LetDeclaration) -> Node Expression -> ( Doc t, Bool )
-prettyLetExpr indent declarations (Node _ expression) =
+prettyLet : List (Node LetDeclaration) -> Node Expression -> ( Doc t, Bool )
+prettyLet declarations (Node _ expression) =
     ( [ Pretty.string "let"
       , denodeAll declarations
-            |> List.map (prettyLetDeclaration indent)
+            |> List.map prettyLetDeclaration
             |> doubleLines
-            |> Pretty.indent indent
+            |> Pretty.indent 2
       , Pretty.string "in"
-      , prettyExpressionInner topContext 2 expression |> Tuple.first
+      , prettyExpressionInner topContext expression |> Tuple.first
       ]
         |> Pretty.lines
         |> Pretty.align
@@ -433,18 +429,17 @@ prettyLetExpr indent declarations (Node _ expression) =
     )
 
 
-prettyLetDeclaration : Int -> LetDeclaration -> Doc t
-prettyLetDeclaration indent letDecl =
+prettyLetDeclaration : LetDeclaration -> Doc t
+prettyLetDeclaration letDecl =
     case letDecl of
         LetDeclaration (Node _ path) (Node _ expr) ->
             [ prettyAttrPath path
-            , Pretty.string "= "
+            , Pretty.string "="
+            , prettyExpression expr
+                |> Pretty.a semicolon
+                |> Pretty.nest 2
             ]
                 |> Pretty.words
-                |> Pretty.a
-                    (prettyExpression expr
-                        |> Pretty.nest (2 + indent)
-                    )
 
         LetInheritVariables _ ->
             Debug.todo "prettyLetDeclaration > LetInheritVariables _"
@@ -502,18 +497,17 @@ prettyStringElement elem =
                 |> Pretty.a (Pretty.string "}")
 
 
-prettyFunction : Int -> Node Pattern -> Node Expression -> ( Doc t, Bool )
-prettyFunction indent (Node _ arg) (Node _ child) =
+prettyFunction : Node Pattern -> Node Expression -> ( Doc t, Bool )
+prettyFunction (Node _ arg) (Node _ child) =
     let
         ( prettyExpr, alwaysBreak ) =
-            prettyExpressionInner topContext 4 child
+            prettyExpressionInner topContext child
     in
     ( [ prettyPatternInner False arg
             |> Pretty.a (Pretty.string ": ")
       , prettyExpr
       ]
         |> Pretty.lines
-        |> Pretty.hang indent
         |> optionalGroup alwaysBreak
     , alwaysBreak
     )
@@ -556,7 +550,7 @@ prettyAttribute attr =
         Attribute (Node _ fld) (Node _ val) ->
             let
                 ( prettyExpr, alwaysBreak ) =
-                    prettyExpressionInner topContext 0 val
+                    prettyExpressionInner topContext val
             in
             case ( val, alwaysBreak ) of
                 ( FunctionExpr _ _, True ) ->
@@ -565,7 +559,7 @@ prettyAttribute attr =
                         ]
                             |> Pretty.words
                       , prettyExpr
-                            |> Pretty.a (Pretty.string ";")
+                            |> Pretty.a semicolon
                             |> Pretty.indent 2
                       ]
                         |> Pretty.lines
@@ -579,7 +573,7 @@ prettyAttribute attr =
                       , prettyExpr
                       ]
                         |> Pretty.words
-                        |> Pretty.a (Pretty.string ";")
+                        |> Pretty.a semicolon
                         |> optionalGroup alwaysBreak
                     , alwaysBreak
                     )
@@ -591,33 +585,34 @@ prettyAttribute attr =
             Debug.todo "prettySetter > AttributeInheritFromAttrSet _ _"
 
 
-prettyList : Int -> List (Node Expression) -> ( Doc t, Bool )
-prettyList indent exprs =
+prettyList : List (Node Expression) -> ( Doc t, Bool )
+prettyList exprs =
     case exprs of
         [] ->
             ( Pretty.string "[]", False )
 
         _ ->
             let
-                open : Doc t
-                open =
-                    Pretty.a Pretty.space (Pretty.string "[")
-
-                close : Doc t
-                close =
-                    Pretty.a (Pretty.string "]") Pretty.line
-
                 ( prettyExpressions, alwaysBreak ) =
-                    List.map (prettyExpressionInner topContext (decrementIndent indent 2)) (denodeAll exprs)
+                    denodeAll exprs
+                        |> List.map (prettyExpressionInner topContext)
                         |> List.unzip
                         |> Tuple.mapSecond (List.any identity)
             in
-            ( prettyExpressions
-                |> Pretty.separators ", "
-                |> Pretty.surround open close
-                |> Pretty.align
+            ( ([ Pretty.string "["
+               , if alwaysBreak then
+                    doubleLines prettyExpressions
+                        |> Pretty.indent 2
+
+                 else
+                    Pretty.lines prettyExpressions
+                        |> Pretty.indent 2
+               , Pretty.string "]"
+               ]
+                |> Pretty.lines
+              )
                 |> optionalGroup alwaysBreak
-            , alwaysBreak
+            , alwaysBreak || List.length exprs > 1
             )
 
 
@@ -625,7 +620,7 @@ prettyRecordAccess : Node Expression -> List (Node Name) -> Maybe (Node Expressi
 prettyRecordAccess (Node _ expr) names maybeDefault =
     let
         ( prettyExpr, alwaysBreak ) =
-            prettyExpressionInner bottomContext 4 expr
+            prettyExpressionInner bottomContext expr
     in
     ( prettyExpr
         |> Pretty.a dot
@@ -649,20 +644,6 @@ prettyRecordAccess (Node _ expr) names maybeDefault =
 --== Helpers
 
 
-decrementIndent : Int -> Int -> Int
-decrementIndent currentIndent spaces =
-    let
-        modded : Int
-        modded =
-            modBy 4 (currentIndent - spaces)
-    in
-    if modded == 0 then
-        4
-
-    else
-        modded
-
-
 dot : Doc t
 dot =
     Pretty.string "."
@@ -673,9 +654,19 @@ slash =
     Pretty.string "/"
 
 
+semicolon : Doc t
+semicolon =
+    Pretty.string ";"
+
+
+quote : Doc t
+quote =
+    Pretty.string "\""
+
+
 quotes : Doc t -> Doc t
 quotes doc =
-    Pretty.surround (Pretty.char '"') (Pretty.char '"') doc
+    Pretty.surround quote quote doc
 
 
 doubleLines : List (Doc t) -> Doc t
