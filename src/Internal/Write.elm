@@ -209,7 +209,7 @@ prettyExpressionInner context indent expression =
             noninfix <| prettyLetExpr indent letDeclarations letExpression
 
         FunctionExpr arg child ->
-            noninfix <| prettyLambdaExpression indent arg child
+            noninfix <| prettyFunction indent arg child
 
         AttrSetExpr setters ->
             prettyAttrSet setters
@@ -242,8 +242,13 @@ prettyExpressionInner context indent expression =
             , False
             )
 
-        LookupPathExpr _ ->
-            Debug.todo "branch 'LookupPathExpr _' not implemented"
+        LookupPathExpr components ->
+            ( components
+                |> List.map Pretty.string
+                |> Pretty.join (Pretty.string "/")
+                |> Pretty.surround (Pretty.string "<") (Pretty.string ">")
+            , False
+            )
 
         WithExpr _ _ ->
             Debug.todo "branch 'WithExpr _ _' not implemented"
@@ -267,8 +272,7 @@ prettyApplication indent exprs =
     in
     ( prettyExpressions
         |> Pretty.lines
-        |> Pretty.nest indent
-        |> Pretty.align
+        |> Pretty.hang indent
         |> optionalGroup alwaysBreak
     , alwaysBreak
     )
@@ -499,8 +503,8 @@ prettyStringElement elem =
                 |> Pretty.a (Pretty.string "}")
 
 
-prettyLambdaExpression : Int -> Node Pattern -> Node Expression -> ( Doc t, Bool )
-prettyLambdaExpression indent (Node _ arg) (Node _ child) =
+prettyFunction : Int -> Node Pattern -> Node Expression -> ( Doc t, Bool )
+prettyFunction indent (Node _ arg) (Node _ child) =
     let
         ( prettyExpr, alwaysBreak ) =
             prettyExpressionInner topContext 4 child
@@ -510,8 +514,7 @@ prettyLambdaExpression indent (Node _ arg) (Node _ child) =
       , prettyExpr
       ]
         |> Pretty.lines
-        |> Pretty.nest indent
-        |> Pretty.align
+        |> Pretty.hang indent
         |> optionalGroup alwaysBreak
     , alwaysBreak
     )

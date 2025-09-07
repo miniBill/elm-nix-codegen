@@ -50,6 +50,12 @@ flake =
                         , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
                         ]
                   )
+                , ( "nix-index-database"
+                  , Nix.attrSet
+                        [ ( "url", Nix.string "github:numtide/flake-utils" )
+                        , ( "inputs.systems.follows", Nix.string "systems" )
+                        ]
+                  )
                 ]
           )
         , ( "outputs"
