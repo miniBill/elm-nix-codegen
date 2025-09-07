@@ -148,7 +148,7 @@ bottomContext =
 -}
 prettyExpression : Expression -> Doc t
 prettyExpression expression =
-    prettyExpressionInner topContext 4 expression
+    prettyExpressionInner topContext 0 expression
         |> Tuple.first
 
 
@@ -327,10 +327,10 @@ prettyIfBlock indent exprBool exprTrue exprFalse =
                 ifPart =
                     let
                         ( _, alwaysBreak ) =
-                            prettyExpressionInner topContext 4 innerExprBool
+                            prettyExpressionInner topContext 2 innerExprBool
                     in
                     [ [ Pretty.string "if"
-                      , prettyExpressionInner topContext 4 innerExprBool |> Tuple.first
+                      , prettyExpressionInner topContext 2 innerExprBool |> Tuple.first
                       ]
                         |> Pretty.lines
                         |> optionalGroup alwaysBreak
@@ -342,7 +342,7 @@ prettyIfBlock indent exprBool exprTrue exprFalse =
 
                 truePart : Doc t
                 truePart =
-                    prettyExpressionInner topContext 4 innerExprTrue
+                    prettyExpressionInner topContext 2 innerExprTrue
                         |> Tuple.first
                         |> Pretty.indent indent
 
@@ -358,7 +358,7 @@ prettyIfBlock indent exprBool exprTrue exprFalse =
                             innerIfBlock nestedExprBool nestedExprTrue nestedExprFalse
 
                         _ ->
-                            [ prettyExpressionInner topContext 4 innerExprFalse
+                            [ prettyExpressionInner topContext 2 innerExprFalse
                                 |> Tuple.first
                                 |> Pretty.indent indent
                             ]
@@ -425,7 +425,7 @@ prettyLetExpr indent declarations (Node _ expression) =
             |> doubleLines
             |> Pretty.indent indent
       , Pretty.string "in"
-      , prettyExpressionInner topContext 4 expression |> Tuple.first
+      , prettyExpressionInner topContext 2 expression |> Tuple.first
       ]
         |> Pretty.lines
         |> Pretty.align
@@ -442,8 +442,7 @@ prettyLetDeclaration indent letDecl =
             ]
                 |> Pretty.words
                 |> Pretty.a
-                    (prettyExpressionInner topContext 0 expr
-                        |> Tuple.first
+                    (prettyExpression expr
                         |> Pretty.nest (2 + indent)
                     )
 
@@ -528,7 +527,7 @@ prettyAttrSet setters =
 
         _ ->
             let
-                ( prettyExpressions, alwaysBreak ) =
+                ( prettyAttributes, alwaysBreak ) =
                     setters
                         |> List.map (\(Node _ attr) -> prettyAttribute attr)
                         |> List.unzip
@@ -536,11 +535,11 @@ prettyAttrSet setters =
             in
             ( ([ Pretty.string "{"
                , if alwaysBreak then
-                    doubleLines prettyExpressions
+                    doubleLines prettyAttributes
                         |> Pretty.indent 2
 
                  else
-                    Pretty.lines prettyExpressions
+                    Pretty.lines prettyAttributes
                         |> Pretty.indent 2
                , Pretty.string "}"
                ]
@@ -554,6 +553,24 @@ prettyAttrSet setters =
 prettyAttribute : Attribute -> ( Doc t, Bool )
 prettyAttribute attr =
     case attr of
+        Attribute (Node _ fld) (Node _ ((FunctionExpr _ _) as val)) ->
+            let
+                ( prettyExpr, alwaysBreak ) =
+                    prettyExpressionInner topContext 0 val
+            in
+            ( [ [ prettyAttrPath fld
+                , Pretty.string "="
+                ]
+                    |> Pretty.words
+              , prettyExpr
+                    |> Pretty.a (Pretty.string ";")
+                    |> Pretty.indent 2
+              ]
+                |> Pretty.lines
+                |> optionalGroup alwaysBreak
+            , alwaysBreak
+            )
+
         Attribute (Node _ fld) (Node _ val) ->
             let
                 ( prettyExpr, alwaysBreak ) =
