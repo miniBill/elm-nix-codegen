@@ -553,38 +553,36 @@ prettyAttrSet setters =
 prettyAttribute : Attribute -> ( Doc t, Bool )
 prettyAttribute attr =
     case attr of
-        Attribute (Node _ fld) (Node _ ((FunctionExpr _ _) as val)) ->
-            let
-                ( prettyExpr, alwaysBreak ) =
-                    prettyExpressionInner topContext 0 val
-            in
-            ( [ [ prettyAttrPath fld
-                , Pretty.string "="
-                ]
-                    |> Pretty.words
-              , prettyExpr
-                    |> Pretty.a (Pretty.string ";")
-                    |> Pretty.indent 2
-              ]
-                |> Pretty.lines
-                |> optionalGroup alwaysBreak
-            , alwaysBreak
-            )
-
         Attribute (Node _ fld) (Node _ val) ->
             let
                 ( prettyExpr, alwaysBreak ) =
                     prettyExpressionInner topContext 0 val
             in
-            ( [ prettyAttrPath fld
-              , Pretty.string "="
-              , prettyExpr
-              ]
-                |> Pretty.words
-                |> Pretty.a (Pretty.string ";")
-                |> optionalGroup alwaysBreak
-            , alwaysBreak
-            )
+            case ( val, alwaysBreak ) of
+                ( FunctionExpr _ _, True ) ->
+                    ( [ [ prettyAttrPath fld
+                        , Pretty.string "="
+                        ]
+                            |> Pretty.words
+                      , prettyExpr
+                            |> Pretty.a (Pretty.string ";")
+                            |> Pretty.indent 2
+                      ]
+                        |> Pretty.lines
+                        |> optionalGroup alwaysBreak
+                    , alwaysBreak
+                    )
+
+                _ ->
+                    ( [ prettyAttrPath fld
+                      , Pretty.string "="
+                      , prettyExpr
+                      ]
+                        |> Pretty.words
+                        |> Pretty.a (Pretty.string ";")
+                        |> optionalGroup alwaysBreak
+                    , alwaysBreak
+                    )
 
         AttributeInheritVariables _ ->
             Debug.todo "prettySetter > AttributeInheritVariables _"
