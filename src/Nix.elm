@@ -2,7 +2,7 @@ module Nix exposing
     ( Expression, toString
     , bool, int, float, string
     , list, path, null
-    , record, get
+    , attrSet, get
     , ifThen
     , fn, functionReduced, Arg
     , parse
@@ -23,14 +23,14 @@ module Nix exposing
 
 ## Records
 
-@docs record, get
+@docs attrSet, get
 
 
 ## Flow control
 
 @docs ifThen
 
-**Note** If you need `let` or `case` expressions, check out the docs for [`Elm.Let`](./Elm-Let) or [`Elm.Case`](./Elm-Case)!
+**Note** If you need `let` expressions, check out the docs for [`Nix.Let`](./Nix-Let)!
 
 
 ## Functions
@@ -38,7 +38,7 @@ module Nix exposing
 @docs fn, functionReduced, Arg
 
 
-# Parsing existing Elm
+# Parsing existing Nix
 
 @docs parse
 
@@ -64,9 +64,6 @@ type alias Expression =
 
 
 {-| See what code this expression would generate!
-
-**Note** - Check out the `Elm.ToString` module if this doesn't quite meet your needs!
-
 -}
 toString : Expression -> String
 toString (Compiler.Expression toExp) =
@@ -152,14 +149,14 @@ list exprs =
 
 {-|
 
-    Elm.record
-        [ ( "name", Elm.string "Elm" )
-        , ( "designation", Elm.string "Pretty fabulous" )
+    Nix.attrSet
+        [ ( "name", Nix.string "Nix" )
+        , ( "designation", Nix.string "Pretty fabulous" )
         ]
 
 -}
-record : List ( String, Expression ) -> Expression
-record fields =
+attrSet : List ( String, Expression ) -> Expression
+attrSet fields =
     Compiler.expression <|
         \index ->
             let
@@ -195,9 +192,9 @@ record fields =
 
 {-|
 
-    ifThen (Elm.bool True)
-        (Elm.string "yes")
-        (Elm.string "no")
+    ifThen (Nix.bool True)
+        (Nix.string "yes")
+        (Nix.string "no")
 
 Will generate
 
@@ -209,11 +206,11 @@ Will generate
 
 If you need more than one branch, then chain them together!
 
-     Elm.ifThen (Elm.bool True)
-        (Elm.string "yes")
-        (Elm.ifThen (Elm.bool True)
-            (Elm.string "maybe")
-            (Elm.string "no")
+     Nix.ifThen (Nix.bool True)
+        (Nix.string "yes")
+        (Nix.ifThen (Nix.bool True)
+            (Nix.string "maybe")
+            (Nix.string "no")
         )
 
 Will generate
@@ -251,7 +248,7 @@ ifThen condition thenBranch elseBranch =
 {-|
 
     record
-        |> Elm.get "field"
+        |> Nix.get "field"
 
 results in
 
@@ -299,39 +296,22 @@ This may seem a little weird the first time you encounter it, so let's break it 
 Here's what's happening for the `fn*` functions —
 
   - The `String` arguments are the **names of the arguments** for the generated function.
-  - The attached `Maybe Annotation` is the type annotation. If you provide `Nothing`, then `elm-codegen` will infer the type for you!
   - The `(Expression -> Expression)` function is where we're providing you an `Expression` that represents an argument coming in to the generated function.
 
 So, this
 
-    Elm.fn (Elm.Arg.var "firstInt")
+    Nix.fn (Nix.Arg.var "firstInt")
         (\firstArgument ->
-            Elm.Op.plus
-                (Elm.int 42)
+            Nix.Op.plus
+                (Nix.int 42)
                 firstArgument
         )
 
 Generates
 
-    \firstInt -> 42 + firstInt
+    firstInt: 42 + firstInt
 
-If you want to generate a **top level** function instead of an anonymous function, use `Elm.declaration`.
-
-    Elm.declaration "add42" <|
-        Elm.fn (Elm.Arg.var "firstInt")
-            (\firstArgument ->
-                Elm.Op.plus
-                    (Elm.int 42)
-                    firstArgument
-            )
-
-Results in
-
-    add42 : Int -> Int
-    add42 firstInt =
-        42 + firstInt
-
-**Note** — Elm CodeGen will protect variable names if they're used in a nested `fn*` by adding a string of numbers to the end of the name. So, you may see a variable name be something like `myVariable_0_1`.
+**Note** — Nix CodeGen will protect variable names if they're used in a nested `fn*` by adding a string of numbers to the end of the name. So, you may see a variable name be something like `myVariable_0_1`.
 
 -}
 fn : Arg arg -> (arg -> Expression) -> Expression
@@ -351,7 +331,7 @@ fn arg1 toExpression =
         )
 
 
-{-| Check out the `Elm.Arg` module for more information on how to create one of these.
+{-| Check out the `Nix.Arg` module for more information on how to create one of these.
 -}
 type alias Arg val =
     Internal.Arg.Arg val

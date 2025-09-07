@@ -7,10 +7,10 @@ import Nix.Let
 
 flake : Expression
 flake =
-    Nix.record
+    Nix.attrSet
         [ ( "description", Nix.string "Home Manager and NixOS configurations" )
         , ( "inputs"
-          , Nix.record
+          , Nix.attrSet
                 [ ( "nixpkgs.url", Nix.string "github:NixOS/nixpkgs/nixos-25.05" )
 
                 -- , ( "nixpkgs-small.url", Nix.string "github:NixOS/nixpkgs/nixos-25.05-small" )
@@ -18,10 +18,36 @@ flake =
                 , ( "nixos-hardware.url", Nix.string "github:NixOS/nixos-hardware/master" )
                 , ( "systems.url", Nix.string "github:nix-systems/default" )
                 , ( "secretdemoclub"
-                  , Nix.record
+                  , Nix.attrSet
                         [ ( "url", Nix.string "github:miniBill/secretdemoclub?dir=server" )
                         , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
                         , ( "inputs.flake-utils.follows", Nix.string "flake-utils" )
+                        ]
+                  )
+                , ( "musnix"
+                  , Nix.attrSet
+                        [ ( "url", Nix.string "github:musnix/musnix" )
+                        , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
+                        ]
+                  )
+                , ( "agenix"
+                  , Nix.attrSet
+                        [ ( "url", Nix.string "github:ryantm/agenix" )
+                        , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
+                        , ( "inputs.home-manager.follows", Nix.string "home-manager" )
+                        , ( "inputs.systems.follows", Nix.string "systems" )
+                        ]
+                  )
+                , ( "home-manager"
+                  , Nix.attrSet
+                        [ ( "url", Nix.string "github:nix-community/home-manager/release-25.05" )
+                        , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
+                        ]
+                  )
+                , ( "nix-index-database"
+                  , Nix.attrSet
+                        [ ( "url", Nix.string "github:nix-community/nix-index-database" )
+                        , ( "inputs.nixpkgs.follows", Nix.string "nixpkgs" )
                         ]
                   )
                 ]
@@ -31,12 +57,12 @@ flake =
                 \inputs ->
                     Nix.Let.letIn
                         (\withConfig ->
-                            Nix.record
+                            Nix.attrSet
                                 [ ( "homeConfigurations"
-                                  , Nix.record
+                                  , Nix.attrSet
                                         [ ( "minibill@gadiriel"
                                           , withConfig
-                                                (Nix.record
+                                                (Nix.attrSet
                                                     [ ( "system", Nix.string "aarch64-darwin" )
                                                     , ( "module", Nix.path "./machines/gadiriel/home-manager.nix" )
                                                     ]
@@ -55,7 +81,7 @@ flake =
                             (\{ system, username, module_ } ->
                                 Nix.apply
                                     (inputs |> Nix.get "home-manager.lib.homeManagerConfiguration")
-                                    [ Nix.record [ ( "pkgs", Nix.null ) ] ]
+                                    [ Nix.attrSet [ ( "pkgs", Nix.null ) ] ]
                             )
                         |> Nix.Let.toExpression
           )
