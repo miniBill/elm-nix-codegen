@@ -1,31 +1,19 @@
 module Internal.Compiler exposing
     ( Expression(..)
     , Restrictions(..)
-    , Visited
-    , Warning
     , denode
     , denodeAll
-    , denodeMaybe
     , expression
-    , nodeAtLine
     , nodify
     , nodifyAll
     , parens
     , thread
     , toExpressionDetails
-    , toVar
     )
 
 import Internal.Index as Index exposing (Index)
 import Nix.Syntax.Expression as Exp
-import Nix.Syntax.Node as Node exposing (Node(..))
-import Set exposing (Set)
-
-
-type alias Warning =
-    { declaration : String
-    , warning : String
-    }
+import Nix.Syntax.Node as Node exposing (Node)
 
 
 {-| -}
@@ -93,32 +81,6 @@ parens expr =
             Exp.ParenthesizedExpr (nodify expr)
 
 
-toVar :
-    Index
-    -> String
-    ->
-        { name : String
-        , typename : String
-        , val : Expression
-        , index : Index
-        }
-toVar index desiredName =
-    let
-        ( name, newIndex ) =
-            Index.getName desiredName index
-
-        typename : String
-        typename =
-            Index.protectTypeName desiredName index
-    in
-    { name = name
-    , typename = typename
-    , index = newIndex
-    , val =
-        Expression <| \_ -> Exp.VariableExpr name
-    }
-
-
 denode : Node a -> a
 denode =
     Node.value
@@ -129,23 +91,9 @@ denodeAll =
     List.map denode
 
 
-denodeMaybe : Maybe (Node a) -> Maybe a
-denodeMaybe =
-    Maybe.map denode
-
-
 nodify : a -> Node a
 nodify exp =
     Node.empty exp
-
-
-nodeAtLine : Int -> a -> Node a
-nodeAtLine line exp =
-    Node
-        { start = { column = 0, row = line }
-        , end = { column = 0, row = line }
-        }
-        exp
 
 
 nodifyAll : List a -> List (Node a)
@@ -175,14 +123,5 @@ threadHelper index exps rendered =
                 (toExpDetails index :: rendered)
 
 
-type alias Visited =
-    Set String
-
-
 type Restrictions
-    = NoRestrictions
-    | IsNumber
-    | IsAppendable
-    | IsComparable
-    | IsAppendableComparable
-    | Overconstrainted (List Restrictions)
+    = Overconstrainted (List Restrictions)

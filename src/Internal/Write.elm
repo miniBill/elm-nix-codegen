@@ -525,26 +525,21 @@ prettyAttrSet setters =
 
         _ ->
             let
-                open : Doc t
-                open =
-                    Pretty.a Pretty.space (Pretty.string "{")
-
-                close : Doc t
-                close =
-                    Pretty.a (Pretty.string "}")
-                        Pretty.line
-
                 ( prettyExpressions, alwaysBreak ) =
                     setters
                         |> denodeAll
                         |> List.map prettyAttribute
                         |> List.unzip
-                        |> Tuple.mapSecond (List.any identity)
+                        |> Tuple.mapBoth
+                            (List.map (Pretty.indent 2))
+                            (List.any identity)
             in
-            ( prettyExpressions
-                |> Pretty.separators ", "
-                |> Pretty.surround open close
-                |> Pretty.align
+            ( ([ Pretty.string "{"
+               , doubleLines prettyExpressions
+               , Pretty.string "}"
+               ]
+                |> Pretty.lines
+              )
                 |> optionalGroup alwaysBreak
             , alwaysBreak
             )
@@ -556,17 +551,15 @@ prettyAttribute attr =
         Attribute (Node _ fld) (Node _ val) ->
             let
                 ( prettyExpr, alwaysBreak ) =
-                    prettyExpressionInner topContext 4 val
+                    prettyExpressionInner topContext 0 val
             in
-            ( [ [ prettyAttrPath fld
-                , Pretty.string "="
-                ]
-                    |> Pretty.words
+            ( [ prettyAttrPath fld
+              , Pretty.string "="
               , prettyExpr
               ]
-                |> Pretty.lines
+                |> Pretty.words
+                |> Pretty.a (Pretty.string ";")
                 |> optionalGroup alwaysBreak
-                |> Pretty.nest 4
             , alwaysBreak
             )
 

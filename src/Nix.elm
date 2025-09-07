@@ -420,12 +420,12 @@ betaReduce e =
                         e
 
                 (Node _ last) :: tail ->
-                    let
-                        otherArgs : List (Node Exp.Expression)
-                        otherArgs =
-                            List.reverse tail
-                    in
                     if extractLastArg last == Just lastLambdaArg then
+                        let
+                            otherArgs : List (Node Exp.Expression)
+                            otherArgs =
+                                List.reverse tail
+                        in
                         case otherArgs of
                             [] ->
                                 betaReduce (Node.value f)

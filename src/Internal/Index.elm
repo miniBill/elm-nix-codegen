@@ -1,22 +1,16 @@
 module Internal.Index exposing
-    ( Index, startIndex, startChecked
+    ( Index, startIndex
     , next, dive
-    , getName, indexToString, protectTypeName
-    , typecheck
-    , getImport, hasModuleName
+    , getName
     )
 
 {-|
 
-@docs Index, startIndex, startChecked
+@docs Index, startIndex
 
 @docs next, dive
 
-@docs getName, indexToString, protectTypeName
-
-@docs typecheck
-
-@docs getImport, hasModuleName
+@docs getName
 
 -}
 
@@ -45,37 +39,8 @@ type Index
     = Index (Maybe ModuleName) Int (List Int) Scope Bool
 
 
-hasModuleName : Index -> Bool
-hasModuleName (Index maybeModName _ _ _ _) =
-    case maybeModName of
-        Just _ ->
-            True
-
-        Nothing ->
-            False
-
-
-getImport : Index -> List String -> List String
-getImport (Index maybeModName _ _ _ _) importedAs =
-    case maybeModName of
-        Just modName ->
-            if modName == importedAs then
-                []
-
-            else
-                importedAs
-
-        Nothing ->
-            importedAs
-
-
 type alias ModuleName =
     List String
-
-
-typecheck : Index -> Bool
-typecheck (Index _ _ _ _ check) =
-    check
 
 
 type alias Scope =
@@ -88,20 +53,9 @@ startIndex modName =
     Index modName 0 [] Set.empty True
 
 
-{-| -}
-startChecked : Maybe ModuleName -> Bool -> Index
-startChecked modName checked =
-    Index modName 0 [] Set.empty checked
-
-
 next : Index -> Index
 next (Index modName top tail scope check) =
     Index modName (top + 1) tail scope check
-
-
-nextN : Int -> Index -> Index
-nextN n (Index modName top tail scope check) =
-    Index modName (top + n) tail scope check
 
 
 dive : Index -> Index
@@ -139,17 +93,6 @@ getName desiredName ((Index modName top tail scope check) as index) =
             ( protectedNameLevel2
             , Index modName (top + 1) tail (Set.insert protectedNameLevel2 scope) check
             )
-
-
-protectTypeName : String -> Index -> String
-protectTypeName base ((Index _ _ tail _ _) as index) =
-    case tail of
-        [] ->
-            Format.formatValue base
-
-        _ ->
-            Format.formatValue
-                (base ++ indexToString index)
 
 
 indexToString : Index -> String

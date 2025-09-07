@@ -1,0 +1,7 @@
+{
+    "license": "BSD-3-Clause",
+    "dependencies": {},
+    "devDependencies": {
+        "elm-review": "^2.13.4"
+    }
+}

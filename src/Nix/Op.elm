@@ -57,7 +57,6 @@ Would generate
 import Internal.Compiler as Compiler
 import Nix exposing (Expression)
 import Nix.Syntax.Expression as Exp
-import Nix.Syntax.Node exposing (Node(..))
 
 
 

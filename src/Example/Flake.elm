@@ -1,4 +1,4 @@
-module Example.Flake exposing (..)
+module Example.Flake exposing (flake)
 
 import Nix exposing (Expression)
 import Nix.Arg
@@ -12,6 +12,15 @@ flake =
         , ( "inputs"
           , Nix.record
                 [ ( "nixpkgs.url", Nix.string "github:NixOS/nixpkgs/nixos-25.05" )
+
+                -- , ( "nixpkgs-small.url", Nix.string "github:NixOS/nixpkgs/nixos-25.05-small" )
+                -- , ( "nixpkgs-unstable.url", Nix.string "nixpkgs/nixos-unstable" )
+                , ( "nixos-hardware.url", Nix.string "github:NixOS/nixos-hardware/master" )
+                , ( "systems.url", Nix.string "github:nix-systems/default" )
+                , ( "secretdemoclub"
+                  , Nix.record
+                        []
+                  )
                 ]
           )
         , ( "outputs"

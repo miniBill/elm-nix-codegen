@@ -1,4 +1,4 @@
-module Internal.Format exposing (formatDeclarationName, formatType, formatValue, sanitize)
+module Internal.Format exposing (formatValue, sanitize)
 
 {-|
 
@@ -15,26 +15,6 @@ formatValue str =
             String.toLower (String.left 1 str) ++ String.dropLeft 1 str
     in
     sanitize formatted
-
-
-{-|
-
-    Top level values have the same rules as normal values, but `main` is allowed.
-
--}
-formatDeclarationName : String -> String
-formatDeclarationName str =
-    case str of
-        "main" ->
-            "main"
-
-        _ ->
-            formatValue str
-
-
-formatType : String -> String
-formatType str =
-    String.toUpper (String.left 1 str) ++ String.dropLeft 1 str
 
 
 sanitize : String -> String
