@@ -418,7 +418,11 @@ showParen show ( child, alwaysBreak ) =
 
             close : Doc t
             close =
-                Pretty.a (Pretty.string ")") Pretty.tightline
+                if alwaysBreak then
+                    Pretty.a (Pretty.string ")") Pretty.tightline
+
+                else
+                    Pretty.string ")"
         in
         ( child
             |> Pretty.nest 1
@@ -517,12 +521,18 @@ prettyFunction (Node _ arg) (Node _ child) =
         ( prettyExpr, alwaysBreak ) =
             prettyExpressionInner topContext child
     in
-    ( [ prettyPatternInner False arg
+    ( if alwaysBreak then
+        [ prettyPatternInner False arg
             |> Pretty.a (Pretty.string ": ")
-      , prettyExpr
-      ]
-        |> Pretty.lines
-        |> optionalGroup alwaysBreak
+        , prettyExpr
+        ]
+            |> Pretty.lines
+            |> optionalGroup alwaysBreak
+
+      else
+        prettyPatternInner False arg
+            |> Pretty.a (Pretty.string ": ")
+            |> Pretty.a prettyExpr
     , alwaysBreak
     )
 
@@ -572,20 +582,18 @@ prettyList exprs =
                         |> List.unzip
                         |> Tuple.mapSecond (List.any identity)
             in
-            ( ([ Pretty.string "["
-               , if alwaysBreak then
+            ( [ Pretty.string "["
+              , if alwaysBreak then
                     doubleLines prettyExpressions
                         |> Pretty.indent 2
 
-                 else
+                else
                     Pretty.lines prettyExpressions
                         |> Pretty.indent 2
-               , Pretty.string "]"
-               ]
+              , Pretty.string "]"
+              ]
                 |> Pretty.lines
-              )
-                |> optionalGroup alwaysBreak
-            , alwaysBreak || List.length exprs > 1
+            , True
             )
 
 
