@@ -267,11 +267,28 @@ prettyApplication exprs =
             List.map
                 (prettyExpressionInner bottomContext)
                 (denodeAll exprs)
-                |> List.unzip
-                |> Tuple.mapSecond (List.any identity)
+                |> List.foldl
+                    (\( e, eBreak ) ( acc, break ) ->
+                        if acc == Pretty.empty then
+                            ( e, eBreak )
+
+                        else if break then
+                            ( acc
+                                |> Pretty.a Pretty.line
+                                |> Pretty.a (Pretty.indent 2 e)
+                            , True
+                            )
+
+                        else
+                            ( acc
+                                |> Pretty.a Pretty.space
+                                |> Pretty.a e
+                            , eBreak
+                            )
+                    )
+                    ( Pretty.empty, False )
     in
     ( prettyExpressions
-        |> Pretty.lines
         |> optionalGroup alwaysBreak
     , alwaysBreak
     )
@@ -432,14 +449,9 @@ prettyLet declarations (Node _ expression) =
 prettyLetDeclaration : LetDeclaration -> Doc t
 prettyLetDeclaration letDecl =
     case letDecl of
-        LetDeclaration (Node _ path) (Node _ expr) ->
-            [ prettyAttrPath path
-            , Pretty.string "="
-            , prettyExpression expr
-                |> Pretty.a semicolon
-                |> Pretty.nest 2
-            ]
-                |> Pretty.words
+        LetDeclaration path expr ->
+            prettyAttribute (Attribute path expr)
+                |> Tuple.first
 
         LetInheritVariables _ ->
             Debug.todo "prettyLetDeclaration > LetInheritVariables _"
@@ -539,8 +551,39 @@ prettyAttrSet setters =
                ]
                 |> Pretty.lines
               )
-                |> optionalGroup alwaysBreak
+                |> optionalGroup (alwaysBreak || List.length setters > 1)
             , alwaysBreak || List.length setters > 1
+            )
+
+
+prettyList : List (Node Expression) -> ( Doc t, Bool )
+prettyList exprs =
+    case exprs of
+        [] ->
+            ( Pretty.string "[]", False )
+
+        _ ->
+            let
+                ( prettyExpressions, alwaysBreak ) =
+                    denodeAll exprs
+                        |> List.map (prettyExpressionInner topContext)
+                        |> List.unzip
+                        |> Tuple.mapSecond (List.any identity)
+            in
+            ( ([ Pretty.string "["
+               , if alwaysBreak then
+                    doubleLines prettyExpressions
+                        |> Pretty.indent 2
+
+                 else
+                    Pretty.lines prettyExpressions
+                        |> Pretty.indent 2
+               , Pretty.string "]"
+               ]
+                |> Pretty.lines
+              )
+                |> optionalGroup alwaysBreak
+            , alwaysBreak || List.length exprs > 1
             )
 
 
@@ -583,37 +626,6 @@ prettyAttribute attr =
 
         AttributeInheritFromAttrSet _ _ ->
             Debug.todo "prettySetter > AttributeInheritFromAttrSet _ _"
-
-
-prettyList : List (Node Expression) -> ( Doc t, Bool )
-prettyList exprs =
-    case exprs of
-        [] ->
-            ( Pretty.string "[]", False )
-
-        _ ->
-            let
-                ( prettyExpressions, alwaysBreak ) =
-                    denodeAll exprs
-                        |> List.map (prettyExpressionInner topContext)
-                        |> List.unzip
-                        |> Tuple.mapSecond (List.any identity)
-            in
-            ( ([ Pretty.string "["
-               , if alwaysBreak then
-                    doubleLines prettyExpressions
-                        |> Pretty.indent 2
-
-                 else
-                    Pretty.lines prettyExpressions
-                        |> Pretty.indent 2
-               , Pretty.string "]"
-               ]
-                |> Pretty.lines
-              )
-                |> optionalGroup alwaysBreak
-            , alwaysBreak || List.length exprs > 1
-            )
 
 
 prettyRecordAccess : Node Expression -> List (Node Name) -> Maybe (Node Expression) -> ( Doc t, Bool )

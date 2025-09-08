@@ -62,7 +62,7 @@ flake =
           , Nix.fn (Nix.Arg.var "inputs") <|
                 \inputs ->
                     Nix.Let.letIn
-                        (\allowedUnfree withConfig ->
+                        (\allowedUnfree pkgs withConfig ->
                             Nix.attrSet
                                 [ ( "homeConfigurations"
                                   , Nix.attrSet
@@ -82,6 +82,8 @@ flake =
                             ([ "code"
                              , "discord"
                              , "google-chrome"
+
+                             --  , "lamdera"
                              , "minecraft-launcher"
                              , "slack"
                              , "spotify"
@@ -90,6 +92,23 @@ flake =
                              ]
                                 |> List.map Nix.string
                                 |> Nix.list
+                            )
+                        |> Nix.Let.fn "pkgs"
+                            (Nix.Arg.var "system")
+                            (\system ->
+                                Nix.apply (Nix.val "import")
+                                    [ inputs
+                                        |> Nix.get "nixpkgs"
+                                    , Nix.attrSet
+                                        [ ( "system", system )
+                                        , ( "config"
+                                          , Nix.attrSet
+                                                [ -- ( "overlays", inputs |> Nix.get "comma" |> Nix.get "overlay" ),
+                                                  ( "allowUnfreePredicate", Nix.null )
+                                                ]
+                                          )
+                                        ]
+                                    ]
                             )
                         |> Nix.Let.fn "withConfig"
                             (Nix.Arg.record (\system username module_ -> { system = system, username = username, module_ = module_ }) { open = False }
