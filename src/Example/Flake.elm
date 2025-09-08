@@ -61,23 +61,7 @@ flake =
         , ( "outputs"
           , Nix.fn (Nix.Arg.var "inputs") <|
                 \inputs ->
-                    Nix.Let.letIn
-                        (\allowedUnfree pkgs withConfig ->
-                            Nix.attrSet
-                                [ ( "homeConfigurations"
-                                  , Nix.attrSet
-                                        [ ( "minibill@gadiriel"
-                                          , withConfig
-                                                (Nix.attrSet
-                                                    [ ( "system", Nix.string "aarch64-darwin" )
-                                                    , ( "module", Nix.path "./machines/gadiriel/home-manager.nix" )
-                                                    ]
-                                                )
-                                          )
-                                        ]
-                                  )
-                                ]
-                        )
+                    Nix.Let.letIn identity
                         |> Nix.Let.value "allowedUnfree"
                             ([ "code"
                              , "discord"
@@ -93,34 +77,73 @@ flake =
                                 |> List.map Nix.string
                                 |> Nix.list
                             )
-                        |> Nix.Let.fn "pkgs"
-                            (Nix.Arg.var "system")
-                            (\system ->
-                                Nix.apply (Nix.val "import")
-                                    [ inputs
-                                        |> Nix.get "nixpkgs"
-                                    , Nix.attrSet
-                                        [ ( "system", system )
-                                        , ( "config"
-                                          , Nix.attrSet
-                                                [ -- ( "overlays", inputs |> Nix.get "comma" |> Nix.get "overlay" ),
-                                                  ( "allowUnfreePredicate", Nix.null )
+                        |> Nix.Let.withBody
+                            (\allowedUnfree ->
+                                Nix.Let.letIn identity
+                                    |> Nix.Let.fn "pkgs"
+                                        (Nix.Arg.var "system")
+                                        (\system ->
+                                            Nix.apply (Nix.val "import")
+                                                [ inputs
+                                                    |> Nix.get "nixpkgs"
+                                                , Nix.attrSet
+                                                    [ ( "system", system )
+                                                    , ( "config"
+                                                      , Nix.attrSet
+                                                            [ -- ( "overlays", inputs |> Nix.get "comma" |> Nix.get "overlay" ),
+                                                              ( "allowUnfreePredicate"
+                                                              , Nix.fn (Nix.Arg.var "pkg")
+                                                                    (\pkg ->
+                                                                        Nix.apply (Nix.val "builtins" |> Nix.get "elem")
+                                                                            [ Nix.apply
+                                                                                (inputs |> Nix.gets [ "nixpkgs", "lib", "getName" ])
+                                                                                [ pkg ]
+                                                                            , allowedUnfree
+                                                                            ]
+                                                                    )
+                                                              )
+                                                            , ( "permittedInsecurePackages"
+                                                              , Nix.list
+                                                                    [ Nix.string "zotero-6.0.26"
+                                                                    ]
+                                                              )
+                                                            ]
+                                                      )
+                                                    ]
                                                 ]
-                                          )
-                                        ]
-                                    ]
+                                        )
+                                    |> Nix.Let.withBody
+                                        (\pkgs ->
+                                            Nix.Let.letIn identity
+                                                |> Nix.Let.fn "withConfig"
+                                                    (Nix.Arg.record (\system username module_ -> { system = system, username = username, module_ = module_ }) { open = False }
+                                                        |> Nix.Arg.field "system"
+                                                        |> Nix.Arg.fieldWithDefault "username" (Nix.string "minibill")
+                                                        |> Nix.Arg.field "module"
+                                                    )
+                                                    (\{ system, username, module_ } ->
+                                                        Nix.apply
+                                                            (inputs |> Nix.get "home-manager.lib.homeManagerConfiguration")
+                                                            [ Nix.attrSet [ ( "pkgs", Nix.null ) ] ]
+                                                    )
+                                                |> Nix.Let.withBody
+                                                    (\withConfig ->
+                                                        Nix.attrSet
+                                                            [ ( "homeConfigurations"
+                                                              , Nix.attrSet
+                                                                    [ ( "minibill@gadiriel"
+                                                                      , withConfig
+                                                                            (Nix.attrSet
+                                                                                [ ( "system", Nix.string "aarch64-darwin" )
+                                                                                , ( "module", Nix.path "./machines/gadiriel/home-manager.nix" )
+                                                                                ]
+                                                                            )
+                                                                      )
+                                                                    ]
+                                                              )
+                                                            ]
+                                                    )
+                                        )
                             )
-                        |> Nix.Let.fn "withConfig"
-                            (Nix.Arg.record (\system username module_ -> { system = system, username = username, module_ = module_ }) { open = False }
-                                |> Nix.Arg.field "system"
-                                |> Nix.Arg.fieldWithDefault "username" (Nix.string "minibill")
-                                |> Nix.Arg.field "module"
-                            )
-                            (\{ system, username, module_ } ->
-                                Nix.apply
-                                    (inputs |> Nix.get "home-manager.lib.homeManagerConfiguration")
-                                    [ Nix.attrSet [ ( "pkgs", Nix.null ) ] ]
-                            )
-                        |> Nix.Let.toExpression
           )
         ]

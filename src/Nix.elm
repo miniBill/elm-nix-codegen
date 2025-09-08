@@ -7,6 +7,7 @@ module Nix exposing
     , fn, functionReduced, Arg
     , parse
     , apply, val
+    , gets
     )
 
 {-|
@@ -267,6 +268,21 @@ get fieldName recordExpression =
                 (Compiler.nodify expr)
                 [ Compiler.nodify (IdentifierName fieldName) ]
                 Nothing
+
+
+{-|
+
+    record
+        |> Nix.gets [ "a", "b", "c" ]
+
+results in
+
+    record.a.b.c
+
+-}
+gets : List String -> Expression -> Expression
+gets fieldNames expression =
+    List.foldl (\field acc -> get field acc) expression fieldNames
 
 
 {-| -}
