@@ -264,29 +264,31 @@ prettyApplication : List (Node Expression) -> ( Doc t, Bool )
 prettyApplication exprs =
     let
         ( prettyExpressions, alwaysBreak ) =
-            List.map
-                (prettyExpressionInner bottomContext)
-                (denodeAll exprs)
-                |> List.foldl
-                    (\( e, eBreak ) ( acc, break ) ->
-                        if acc == Pretty.empty then
-                            ( e, eBreak )
+            List.foldl
+                (\(Node _ e) ( acc, break ) ->
+                    let
+                        ( prettyE, eBreak ) =
+                            prettyExpressionInner bottomContext e
+                    in
+                    if acc == Pretty.empty then
+                        ( prettyE, eBreak )
 
-                        else if break then
-                            ( acc
-                                |> Pretty.a Pretty.line
-                                |> Pretty.a (Pretty.indent 2 e)
-                            , True
-                            )
+                    else if break then
+                        ( acc
+                            |> Pretty.a Pretty.line
+                            |> Pretty.a (Pretty.indent 2 prettyE)
+                        , True
+                        )
 
-                        else
-                            ( acc
-                                |> Pretty.a Pretty.space
-                                |> Pretty.a e
-                            , eBreak
-                            )
-                    )
-                    ( Pretty.empty, False )
+                    else
+                        ( acc
+                            |> Pretty.a Pretty.space
+                            |> Pretty.a prettyE
+                        , eBreak
+                        )
+                )
+                ( Pretty.empty, False )
+                exprs
     in
     ( prettyExpressions
         |> optionalGroup alwaysBreak
